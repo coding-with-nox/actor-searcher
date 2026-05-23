@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<h1>Actor Profile</h1>
+<div class="card">
+  <h2>{{ profile.name }}, {{ profile.age }} — {{ profile.gender }}</h2>
+  <p><strong>Location:</strong> {{ profile.location }} (max {{ profile.max_travel_km }}km)</p>
+  <p><strong>Languages:</strong> {{ profile.languages | join(", ") }}</p>
+  <p><strong>Physical:</strong> {{ profile.physical.height_cm }}cm, {{ profile.physical.build }}, {{ profile.physical.hair_color }} hair, {{ profile.physical.eye_color }} eyes</p>
+  <p><strong>Union:</strong> {{ profile.union_status }} | <strong>Experience:</strong> {{ profile.experience_level }}</p>
+  <p><strong>Available from:</strong> {{ profile.availability_from }}</p>
+</div>
+<h2>Skills</h2>
+<div style="margin-bottom:1rem">
+  {% for skill in profile.skills %}<span class="tag">{{ skill }}</span>{% endfor %}
+</div>
+<h3>Skills added via delta</h3>
+{% for row in delta_rows %}{% if row.field_name == "skill" %}
+<div style="margin-bottom:0.5rem">
+  <span class="tag">{{ row.field_value }}</span>
+  <form action="/admin/profile/delta/{{ row.id }}/remove" method="post">
+    <button class="btn btn-danger" style="font-size:0.75rem;padding:1px 6px">×</button>
+  </form>
+</div>
+{% endif %}{% endfor %}
+<h3>Add skill</h3>
+<form action="/admin/profile/delta/add-skill" method="post">
+  <input type="text" name="skill" placeholder="e.g. canto lirico" required style="padding:0.4rem;border:1px solid #ccc;border-radius:4px">
+  <button type="submit" class="btn btn-primary">Add</button>
+</form>
+{% if profile.role_preferences %}
+<h2>Learned Preferences</h2>
+<table>
+  <tr><th>Category</th><th>Score</th></tr>
+  {% for category, score in profile.role_preferences.items() | sort(attribute="1", reverse=True) %}
+  <tr><td>{{ category }}</td><td>
+    <div class="score-bar"><div class="score-fill" style="width:{{ (score*100)|int }}%"></div></div>
+    {{ "%.0f"|format(score*100) }}%
+  </td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

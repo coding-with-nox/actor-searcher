@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Suggestions{% endblock %}
+{% block content %}
+<h1>Profile Suggestions</h1>
+<form action="/admin/learner/run" method="post" style="margin-bottom:1.5rem">
+  <button type="submit" class="btn btn-primary">Run Learner Now</button>
+</form>
+{% if not suggestions %}
+  <p style="color:#666">No pending suggestions. Keep using the Telegram bot to generate feedback.</p>
+{% endif %}
+{% for s in suggestions %}
+<div class="card">
+  <strong>{{ s.suggestion_type | replace("_"," ") | title }}:</strong>
+  <span class="tag">{{ s.field_value }}</span>
+  <p style="color:#555;font-size:0.9rem">{{ s.reasoning }}</p>
+  <form action="/admin/suggestions/{{ s.id }}/apply" method="post">
+    <button type="submit" class="btn btn-success">Apply</button>
+  </form>
+  <form action="/admin/suggestions/{{ s.id }}/dismiss" method="post">
+    <button type="submit" class="btn" style="background:#f0f0f0">Dismiss</button>
+  </form>
+</div>
+{% endfor %}
+{% endblock %}

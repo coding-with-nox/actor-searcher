@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Stats{% endblock %}
+{% block content %}
+<h1>Feedback Statistics</h1>
+<div class="card">
+  <h2>Overall</h2>
+  <table>
+    <tr><th>Action</th><th>Count</th></tr>
+    <tr><td>✅ Approved</td><td>{{ counts.approved }}</td></tr>
+    <tr><td>⭐ Saved</td><td>{{ counts.saved }}</td></tr>
+    <tr><td>❌ Ignored</td><td>{{ counts.ignored }}</td></tr>
+  </table>
+</div>
+<h2>By Category</h2>
+{% if not prefs %}<p style="color:#666">No preference data yet.</p>{% endif %}
+{% for pref in prefs %}
+<div class="card">
+  <strong>{{ pref.role_category }}</strong>
+  <span style="float:right;color:#555">{{ pref.approved_count }} approved / {{ pref.rejected_count }} rejected</span>
+  <div class="score-bar" style="margin-top:0.5rem">
+    <div class="score-fill" style="width:{{ (pref.preference_score*100)|int }}%;background:{% if pref.preference_score >= 0.75 %}#28a745{% elif pref.preference_score >= 0.4 %}#ffc107{% else %}#dc3545{% endif %}"></div>
+  </div>
+  <small>{{ "%.0f"|format(pref.preference_score*100) }}% approval rate</small>
+</div>
+{% endfor %}
+{% endblock %}
