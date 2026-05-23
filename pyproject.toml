@@ -2,6 +2,10 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
 [project]
 name = "actor-searcher"
 version = "0.1.0"
@@ -21,6 +25,10 @@ dependencies = [
   "structlog>=24.2.0",
   "tenacity>=8.3.0",
   "python-dotenv>=1.0.1",
+  "python-telegram-bot>=21.0",
+  "pyyaml>=6.0.2",
+  "jinja2>=3.1.4",
+  "playwright>=1.45.0",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +38,7 @@ dev = [
   "respx>=0.21.1",
   "ruff>=0.5.0",
   "mypy>=1.10.0",
+  "pytest-mock>=3.14",
 ]
 
 [tool.pytest.ini_options]
