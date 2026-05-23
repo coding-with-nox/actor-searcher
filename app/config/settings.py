@@ -23,6 +23,23 @@ class Settings(BaseSettings):
     tavily_api_key: str = Field(default="", alias="TAVILY_API_KEY")
     brave_api_key: str = Field(default="", alias="BRAVE_API_KEY")
 
+    # Actor profile
+    actor_profile_path: str = Field(default="actor_profile.yaml", alias="ACTOR_PROFILE_PATH")
+
+    # Telegram bot (HITL)
+    telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
+    telegram_chat_id: str = Field(default="", alias="TELEGRAM_CHAT_ID")
+    telegram_enabled: bool = Field(default=False, alias="TELEGRAM_ENABLED")
+
+    # Pipeline
+    notification_top_n: int = Field(default=5, alias="NOTIFICATION_TOP_N")
+    matching_batch_size: int = Field(default=20, alias="MATCHING_BATCH_SIZE")
+    minimum_match_score: float = Field(default=0.3, alias="MINIMUM_MATCH_SCORE")
+
+    # Admin
+    admin_username: str = Field(default="admin", alias="ADMIN_USERNAME")
+    admin_password: str = Field(default="", alias="ADMIN_PASSWORD")
+
     provider: ProviderSettings = ProviderSettings()
 
 
