@@ -1,31 +1,85 @@
+import hashlib
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.dedup_agent import DedupAgent
-from app.agents.ranking_agent import RankingAgent
+from app.agents.profile_matching_agent import ProfileMatchingAgent
+from app.agents.query_generator_agent import QueryGeneratorAgent
 from app.agents.search_agent import SearchAgent
-from app.agents.summarizer_agent import SummarizerAgent
 from app.models.db import SearchResult as DBSearchResult
+from app.notifications.telegram_bot import TelegramBotNotifier
+from app.profile.loader import ProfileLoader
 from app.repositories.run_repository import RunRepository
+
+log = structlog.get_logger()
 
 
 class SearchOrchestrator:
-    def __init__(self, search_agent: SearchAgent, ranking_agent: RankingAgent, summarizer_agent: SummarizerAgent, dedup_agent: DedupAgent) -> None:
+    def __init__(
+        self,
+        search_agent: SearchAgent,
+        profile_matching_agent: ProfileMatchingAgent,
+        query_generator_agent: QueryGeneratorAgent,
+        dedup_agent: DedupAgent,
+        profile_loader: ProfileLoader,
+        notifier: TelegramBotNotifier | None = None,
+        notification_top_n: int = 5,
+    ) -> None:
         self.search_agent = search_agent
-        self.ranking_agent = ranking_agent
-        self.summarizer_agent = summarizer_agent
+        self.profile_matching_agent = profile_matching_agent
+        self.query_generator_agent = query_generator_agent
         self.dedup_agent = dedup_agent
+        self.profile_loader = profile_loader
+        self.notifier = notifier
+        self.notification_top_n = notification_top_n
 
     async def execute(self, session: AsyncSession, search_id: int, config: dict[str, object]) -> None:
         repo = RunRepository(session)
         run = await repo.create_run(search_id)
         try:
-            queries = list(config.get("queries", []))
+            profile = await self.profile_loader.load(session)
+            queries = await self.query_generator_agent.execute(profile)
+            log.info("orchestrator.queries_generated", count=len(queries))
+
             raw = await self.search_agent.execute(queries, {})
-            ranked = await self.ranking_agent.execute(raw, list(config.get("scoring", {}).get("keywords", [])), float(config.get("scoring", {}).get("minimum_score", 0.0)))
-            summarized = await self.summarizer_agent.execute(ranked)
-            deduped = await self.dedup_agent.execute(summarized)
-            db_results = [DBSearchResult(run_id=run.id, title=r.title, url=r.url, snippet=r.snippet, content=r.content, source=r.source, published_at=r.published_at, score=r.score, summary=r.summary, content_hash=None) for r in deduped]
+            deduped = await self.dedup_agent.execute(raw)
+            log.info("orchestrator.deduped", count=len(deduped))
+
+            ranked = await self.profile_matching_agent.execute(deduped, profile)
+            log.info("orchestrator.ranked", count=len(ranked))
+
+            db_results: list[DBSearchResult] = []
+            for r in ranked:
+                content_hash = hashlib.sha256((r.title + r.snippet).encode()).hexdigest()
+                db_result = DBSearchResult(
+                    run_id=run.id,
+                    title=r.title,
+                    url=r.url,
+                    snippet=r.snippet,
+                    content=None,
+                    source=r.source,
+                    published_at=r.published_at,
+                    score=r.match_score,
+                    summary=r.rationale,
+                    content_hash=content_hash,
+                    role_category=r.role_category,
+                    deadline=r.deadline,
+                    rationale=r.rationale,
+                    red_flags=r.red_flags,
+                )
+                db_results.append(db_result)
+
             await repo.save_results(run.id, db_results)
+            # flush so SQLAlchemy populates .id on each db_result before passing to notifier
+            await session.flush()
+
+            if self.notifier:
+                top = ranked[: self.notification_top_n]
+                for i, listing in enumerate(top):
+                    db_id = db_results[i].id or 0
+                    await self.notifier.send_listing(db_id, listing)
+
             await repo.finalize_run(run, "success")
         except Exception as exc:
+            log.error("orchestrator.failed", error=str(exc))
             await repo.finalize_run(run, "failed", str(exc))
             raise

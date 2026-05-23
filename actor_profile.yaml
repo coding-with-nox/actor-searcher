@@ -1,0 +1,18 @@
+# Base actor profile — static traits. Edit directly and commit.
+# Dynamic fields (skills added over time, availability updates) are stored in the DB delta.
+
+name: ""
+age: 0
+gender: ""                        # male / female / non-binary
+languages: []                     # e.g. ["Italian (native)", "English (C1)"]
+physical:
+  height_cm: 0
+  build: ""                       # slim / athletic / average / heavy
+  hair_color: ""
+  eye_color: ""
+skills: []                        # e.g. ["singing", "dancing", "horse riding"]
+experience_level: "emerging"      # emerging / mid / established
+union_status: "non-union"         # non-union / Equity / SAG-AFTRA
+location: ""                      # city name
+max_travel_km: 150
+availability_from: ""             # ISO date: YYYY-MM-DD
