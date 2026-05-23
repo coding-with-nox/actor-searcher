@@ -17,7 +17,28 @@ class SchedulerService:
         self.orchestrator = orchestrator
         self.learner = learner or PreferenceLearner()
 
+    async def _ensure_default_search(self) -> None:
+        from app.config.settings import get_settings
+        settings = get_settings()
+        async with SessionLocal() as session:
+            async with session.begin():
+                existing = (await session.execute(select(Search))).scalars().first()
+                if not existing:
+                    session.add(
+                        Search(
+                            name="casting-monitor",
+                            interval_minutes=settings.default_search_interval_minutes,
+                            config={},
+                            enabled=True,
+                        )
+                    )
+                    log.info(
+                        "scheduler.default_search_created",
+                        interval_minutes=settings.default_search_interval_minutes,
+                    )
+
     async def register_jobs(self) -> None:
+        await self._ensure_default_search()
         async with SessionLocal() as session:
             searches = (
                 await session.execute(select(Search).where(Search.enabled.is_(True)))

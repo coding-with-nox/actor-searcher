@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     admin_username: str = Field(default="admin", alias="ADMIN_USERNAME")
     admin_password: str = Field(default="", alias="ADMIN_PASSWORD")
 
+    # Default search schedule (auto-created on first startup)
+    default_search_interval_minutes: int = Field(default=360, alias="SEARCH_INTERVAL_MINUTES")
+
     # Backstage provider
     backstage_email: str = Field(default="", alias="BACKSTAGE_EMAIL")
     backstage_password: str = Field(default="", alias="BACKSTAGE_PASSWORD")
