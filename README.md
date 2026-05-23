@@ -1,49 +1,94 @@
-# Actor Searcher
-Production-grade async backend for scheduled AI-assisted web intelligence.
+# Actor Searcher v2
 
-## Features
-- FastAPI API for search configs, runs, and results
-- APScheduler-based recurring execution
-- Provider abstraction (Tavily + Brave)
-- LLM ranking/summarization via OpenAI Responses API
-- Dedup (URL + content hash)
-- Postgres persistence + Alembic migrations
-- Structlog JSON logging
+AI casting agent per un singolo attore. Monitora fonti di casting (web, Backstage, Gmail), valuta i listing semanticamente contro il profilo dell'attore, e notifica via Telegram con inline keyboard HITL.
 
 ## Quickstart
-1. `cp .env.example .env`
-2. `docker compose up --build`
-3. `alembic upgrade head`
-4. Open `http://localhost:8000/docs`
 
-## Env vars
-- `DATABASE_URL`
-- `REDIS_URL`
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL`
-- `TAVILY_API_KEY`
-- `BRAVE_API_KEY`
+Vedere **[STARTUP.md](STARTUP.md)** per la guida completa.
 
-## Development
-- `pip install -e .[dev]`
-- `pytest`
-- `ruff check .`
-- `mypy app`
+```bash
+cp .env.example .env
+# Compilare .env + actor_profile.yaml
+docker compose up --build -d
+docker compose exec app alembic upgrade head
+docker compose restart app
+```
 
-## Architecture
-- `app/agents`: stateless execution stages
-- `app/providers`: interchangeable search providers
-- `app/services`: orchestration + LLM integration
-- `app/repositories`: DB persistence boundaries
-- `app/scheduler`: recurring job registration and lifecycle
-- `app/notifications`: pluggable channels
+Il bot Telegram inizia a inviare listing al primo run (default: ogni 6 ore).
 
-## Extensibility
-- Add providers by implementing `SearchProvider`
-- Add notification channels via `NotificationChannel`
-- Add specialized agents as pure async components
+## Architettura
 
-## Troubleshooting
-- Ensure API keys are set
-- Ensure migrations have run
-- Check JSON logs for correlation fields
+```
+[Fonti]                [Pipeline]                    [Output]
+Tavily/Brave  ──┐
+Backstage     ──┼──▶ QueryGeneratorAgent
+Gmail/IMAP    ──┘        ↓
+                    SearchAgent (MultiProvider)
+                         ↓
+                    DedupAgent
+                         ↓
+                    DeadlineExtractorAgent
+                         ↓
+                    ProfileMatchingAgent  ←── ActorProfile (YAML + DB delta)
+                         ↓
+                    TelegramBotNotifier (inline keyboard HITL)
+                         ↓
+                    FeedbackRepository → PreferenceLearner (settimanale)
+                                                ↓
+                                        Admin Dashboard (/admin/*)
+```
+
+## Stack
+
+Python 3.12 · FastAPI · SQLAlchemy async · Alembic · APScheduler · OpenAI Responses API · python-telegram-bot · Playwright · Jinja2 · Postgres · Redis · Docker
+
+## Struttura
+
+```
+app/
+  agents/          # stateless pipeline stages
+  admin/           # dashboard (routes, auth, templates)
+  config/          # settings
+  feedback/        # PreferenceLearner
+  models/          # SQLAlchemy + Pydantic schemas
+  notifications/   # Telegram bot + handler
+  profile/         # ActorProfile model + ProfileLoader
+  providers/       # Tavily, Backstage, Gmail, MultiProvider
+  repositories/    # DB boundaries
+  scheduler/       # APScheduler + auto-search creation
+  services/        # LLM + SearchOrchestrator
+actor_profile.yaml   # profilo base (compilare prima dell'avvio)
+```
+
+## Configurazione chiave
+
+| Env var | Default | Descrizione |
+|---|---|---|
+| `OPENAI_API_KEY` | — | Obbligatorio |
+| `TAVILY_API_KEY` | — | Obbligatorio |
+| `TELEGRAM_BOT_TOKEN` | — | Obbligatorio per notifiche |
+| `TELEGRAM_CHAT_ID` | — | Obbligatorio per notifiche |
+| `TELEGRAM_ENABLED` | `false` | Abilitare per ricevere notifiche |
+| `SEARCH_INTERVAL_MINUTES` | `360` | Frequenza monitoraggio |
+| `MINIMUM_MATCH_SCORE` | `0.3` | Soglia score per notifica (0–1) |
+| `ADMIN_PASSWORD` | — | Password dashboard admin |
+
+## Admin Dashboard
+
+`http://localhost:8000/admin/profile` — gestione profilo, skill delta, suggerimenti AI, statistiche feedback.
+
+## Sviluppo
+
+```bash
+pip install -e .[dev]
+pytest
+ruff check app/
+mypy app/
+```
+
+## Documentazione
+
+- [STARTUP.md](STARTUP.md) — guida completa all'avvio
+- [docs/business-plan-cost-analysis.md](docs/business-plan-cost-analysis.md) — analisi costi e sostenibilità
+- [docs/superpowers/specs/](docs/superpowers/specs/) — specifiche di design
+- [docs/superpowers/plans/](docs/superpowers/plans/) — piani di implementazione
