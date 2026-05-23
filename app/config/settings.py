@@ -40,6 +40,20 @@ class Settings(BaseSettings):
     admin_username: str = Field(default="admin", alias="ADMIN_USERNAME")
     admin_password: str = Field(default="", alias="ADMIN_PASSWORD")
 
+    # Backstage provider
+    backstage_email: str = Field(default="", alias="BACKSTAGE_EMAIL")
+    backstage_password: str = Field(default="", alias="BACKSTAGE_PASSWORD")
+    backstage_enabled: bool = Field(default=False, alias="BACKSTAGE_ENABLED")
+    backstage_max_listings: int = Field(default=50, alias="BACKSTAGE_MAX_LISTINGS")
+
+    # Gmail IMAP provider
+    gmail_imap_host: str = Field(default="imap.gmail.com", alias="GMAIL_IMAP_HOST")
+    gmail_imap_port: int = Field(default=993, alias="GMAIL_IMAP_PORT")
+    gmail_app_password: str = Field(default="", alias="GMAIL_APP_PASSWORD")
+    gmail_address: str = Field(default="", alias="GMAIL_ADDRESS")
+    gmail_casting_senders: str = Field(default="", alias="GMAIL_CASTING_SENDERS")
+    gmail_enabled: bool = Field(default=False, alias="GMAIL_ENABLED")
+
     provider: ProviderSettings = ProviderSettings()
 
 
