@@ -48,6 +48,10 @@ class SearchResult(Base):
     score: Mapped[float | None] = mapped_column(Float)
     summary: Mapped[str | None] = mapped_column(Text)
     content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    role_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    red_flags: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     run: Mapped[SearchRun] = relationship(back_populates="results")
 
 
@@ -58,4 +62,44 @@ class Notification(Base):
     channel: Mapped[str] = mapped_column(String(50), index=True)
     payload: Mapped[dict[str, object]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ActorProfileDelta(Base):
+    __tablename__ = "actor_profile_delta"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    field_name: Mapped[str] = mapped_column(String(64), index=True)
+    field_value: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(32), default="user_confirmed")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ActorRolePreference(Base):
+    __tablename__ = "actor_role_preference"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role_category: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    approved_count: Mapped[int] = mapped_column(default=0)
+    rejected_count: Mapped[int] = mapped_column(default=0)
+    preference_score: Mapped[float] = mapped_column(Float, default=0.5)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ActorFeedback(Base):
+    __tablename__ = "actor_feedback"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    result_id: Mapped[int] = mapped_column(ForeignKey("search_results.id", ondelete="CASCADE"), index=True)
+    action: Mapped[str] = mapped_column(String(16), index=True)
+    role_category: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ProfileSuggestion(Base):
+    __tablename__ = "profile_suggestion"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    suggestion_type: Mapped[str] = mapped_column(String(32))
+    field_name: Mapped[str] = mapped_column(String(64))
+    field_value: Mapped[str] = mapped_column(Text)
+    reasoning: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
