@@ -1,6 +1,7 @@
 import hashlib
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.agents.deadline_extractor_agent import DeadlineExtractorAgent
 from app.agents.dedup_agent import DedupAgent
 from app.agents.profile_matching_agent import ProfileMatchingAgent
 from app.agents.query_generator_agent import QueryGeneratorAgent
@@ -21,6 +22,7 @@ class SearchOrchestrator:
         query_generator_agent: QueryGeneratorAgent,
         dedup_agent: DedupAgent,
         profile_loader: ProfileLoader,
+        deadline_extractor_agent: DeadlineExtractorAgent | None = None,
         notifier: TelegramBotNotifier | None = None,
         notification_top_n: int = 5,
     ) -> None:
@@ -29,6 +31,7 @@ class SearchOrchestrator:
         self.query_generator_agent = query_generator_agent
         self.dedup_agent = dedup_agent
         self.profile_loader = profile_loader
+        self.deadline_extractor_agent = deadline_extractor_agent
         self.notifier = notifier
         self.notification_top_n = notification_top_n
 
@@ -43,6 +46,9 @@ class SearchOrchestrator:
             raw = await self.search_agent.execute(queries, {})
             deduped = await self.dedup_agent.execute(raw)
             log.info("orchestrator.deduped", count=len(deduped))
+
+            if self.deadline_extractor_agent:
+                deduped = await self.deadline_extractor_agent.execute(deduped)
 
             ranked = await self.profile_matching_agent.execute(deduped, profile)
             log.info("orchestrator.ranked", count=len(ranked))
