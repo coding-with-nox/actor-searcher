@@ -5,7 +5,9 @@ from app.agents.dedup_agent import DedupAgent
 from app.agents.profile_matching_agent import ProfileMatchingAgent
 from app.agents.query_generator_agent import QueryGeneratorAgent
 from app.agents.search_agent import SearchAgent
+from app.admin.routes import router as admin_router
 from app.api.routes import router
+from app.feedback.learner import PreferenceLearner
 from app.config.settings import get_settings
 from app.core.logging import configure_logging
 from app.notifications.telegram_bot import TelegramBotNotifier
@@ -72,7 +74,7 @@ search_orchestrator = SearchOrchestrator(
     notifier=notifier,
     notification_top_n=settings.notification_top_n,
 )
-scheduler = SchedulerService(search_orchestrator)
+scheduler = SchedulerService(search_orchestrator, learner=PreferenceLearner())
 
 
 @asynccontextmanager
@@ -92,3 +94,4 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(router, prefix="/api/v1")
+app.include_router(admin_router)
